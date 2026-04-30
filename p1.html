@@ -39,7 +39,11 @@
   <script>
     const $ = (id) => document.getElementById(id);
 
-    const log = (msg) => { $('log').textContent += msg + "\n";  };
+    const log = (msg) => {
+      sessionStorage.p1log = (sessionStorage.p1log || '') + msg + "\n";
+      $('log').textContent = sessionStorage.p1log;
+    };
+    $('log').textContent = sessionStorage.p1log || '';
 
     async function loadCourses() {
       $('courseSelect').innerHTML = '<option value="">(оберіть дисципліну)</option>';
