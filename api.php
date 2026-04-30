@@ -184,7 +184,8 @@ switch ($action) {
     }
     if (!$course) fail("Course not found: $courseId", 404);
 
-    $tpl = read_json_file(TEMPLATE_FILE);
+    $path = report_path_for($courseId);
+    $tpl = read_json_file($path) ?? read_json_file(TEMPLATE_FILE);
     if (!is_array($tpl)) fail("Missing/invalid template file", 500);
 
     $tpl['courseId'] = (string)($course['courseId'] ?? '');
@@ -193,7 +194,6 @@ switch ($action) {
 
     $tpl = normalize_report($tpl);
 
-    $path = report_path_for($courseId);
     write_json_file($path, $tpl);
 
     respond(["ok" => true, "data" => $tpl]);
