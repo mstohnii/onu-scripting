@@ -1,0 +1,17 @@
+[
+  {
+    "courseId": "1",
+    "course": "Introduction to Programming",
+    "duration": "90"
+  },
+  {
+    "courseId": "2",
+    "course": "Скриптові мови програмування",
+    "duration": "90"
+  },
+  {
+    "courseId": "3",
+    "course": "Software Engineering",
+    "duration": "120"
+  }
+]

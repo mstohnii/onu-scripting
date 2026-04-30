@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>p3 — питання</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; line-height: 1.4; }
+    .wrap { max-width: 1100px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
+    .card { border:1px solid #ddd; border-radius:12px; padding:16px; margin:12px 0; }
+    input, select, button { padding:10px 12px; font-size:14px; }
+    button { cursor:pointer; }
+    .muted { color:#666; }
+    .ok { color:#0a7; }
+    .err { color:#b00; }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th, td { border:1px solid #ddd; padding:8px; vertical-align:top; }
+    th { background:#f7f7f7; text-align:left; }
+    pre { background:#f7f7f7; padding:12px; border-radius:10px; overflow:auto; }
+    .hint { font-size: 12px; color:#666; margin-top:6px; }
+    .w-q { width: 60%; }
+    .w-t { width: 30%; }
+    .w-a { width: 10%; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>p3 — заповнення питань</h1>
+
+  <div class="row">
+    <button id="toMap">← ui-map</button>
+    <button id="reload">Перезавантажити</button>
+    <button id="save">Зберегти</button>
+  </div>
+
+  <p id="status" class="muted"></p>
+
+  <div class="card">
+    <h3>Додати питання</h3>
+    <div class="row">
+      <input id="qInput" placeholder="Нове питання…" style="flex:1; min-width: 360px;" />
+      <select id="themeSelect" style="min-width: 260px;"></select>
+      <button id="addQ">Додати</button>
+    </div>
+    <div class="hint">
+      Формат: <code>questions = [{question, theme}]</code>. Поле <code>theme</code> — назва теми (title) з <code>themes[]</code>.
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th class="w-q">question</th>
+          <th class="w-t">theme</th>
+          <th class="w-a">дії</th>
+        </tr>
+      </thead>
+      <tbody id="qBody"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3>Контрольний перегляд JSON</h3>
+    <pre id="jsonView">{}</pre>
+  </div>
+</div>
+
+<script>
+(async function(){
+  const statusEl = document.getElementById('status');
+  const jsonView = document.getElementById('jsonView');
+
+  const toMap = document.getElementById('toMap');
+  const reloadBtn = document.getElementById('reload');
+  const saveBtn = document.getElementById('save');
+
+  const qInput = document.getElementById('qInput');
+  const themeSelect = document.getElementById('themeSelect');
+  const addQ = document.getElementById('addQ');
+  const qBody = document.getElementById('qBody');
+
+  function setStatus(msg, cls='muted'){ statusEl.className = cls; statusEl.textContent = msg; }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[c]));
+  }
+
+  async function apiGetReport(courseId){
+    const url = `api.php?action=getReport&courseId=${encodeURIComponent(courseId)}`;
+    const res = await fetch(url, { cache:'no-store' });
+    const json = await res.json().catch(()=>null);
+    if (!res.ok || !json || json.ok !== true) {
+      throw new Error((json && json.error) ? json.error : ('HTTP ' + res.status));
+    }
+    return json.data;
+  }
+
+  async function apiSaveReport(courseId, report){
+    const url = 'api.php?action=saveReport';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      cache:'no-store',
+      body: JSON.stringify({ courseId, report })
+    });
+    const json = await res.json().catch(()=>null);
+    if (!res.ok || !json || json.ok !== true) {
+      throw new Error((json && json.error) ? json.error : ('HTTP ' + res.status));
+    }
+    return json.data;
+  }
+
+  let report = null;
+
+  function getThemeTitles(){
+    const themes = Array.isArray(report?.themes) ? report.themes : [];
+    return themes
+      .map(t => (t && typeof t === 'object') ? String(t.title || '').trim() : '')
+      .filter(x => x.length > 0);
+  }
+
+  function fillThemeSelect(){
+    const titles = getThemeTitles();
+    themeSelect.innerHTML = '';
+
+    const optEmpty = document.createElement('option');
+    optEmpty.value = '';
+    optEmpty.textContent = '(без теми)';
+    themeSelect.appendChild(optEmpty);
+
+    for (const title of titles) {
+      const opt = document.createElement('option');
+      opt.value = title;
+      opt.textContent = title;
+      themeSelect.appendChild(opt);
+    }
+  }
+
+  function normalizeQuestions(){
+    if (!report) return;
+    const qs = Array.isArray(report.questions) ? report.questions : [];
+    report.questions = qs
+      .map(q => {
+        if (typeof q === 'string') return { question: q, theme: '' };
+        if (!q || typeof q !== 'object') return null;
+        const question = String(q.question ?? q.questions ?? '').trim();
+        const theme = String(q.theme ?? q.themes ?? '').trim();
+        if (!question) return null;
+        return { question, theme };
+      })
+      .filter(Boolean);
+  }
+
+  function render(){
+    if (!report) {
+      qBody.innerHTML = `<tr><td colspan="3" class="muted">Немає чернетки</td></tr>`;
+      jsonView.textContent = '{}';
+      return;
+    }
+
+    normalizeQuestions();
+    fillThemeSelect();
+
+    const qs = report.questions || [];
+    if (!qs.length) {
+      qBody.innerHTML = `<tr><td colspan="3" class="muted">Поки порожньо</td></tr>`;
+    } else {
+      const themeTitles = new Set(getThemeTitles());
+      qBody.innerHTML = qs.map((q, i) => {
+        // если тема уже удалена из themes — всё равно показываем её как текст + подсветка (мягко)
+        const themeDisplay = q.theme || '';
+        const themeWarn = (themeDisplay && !themeTitles.has(themeDisplay)) ? ' style="border-color:#f2b6b6;"' : '';
+
+        // селект на строке
+        const options = [''].concat([...themeTitles]).map(t =>
+          `<option value="${escapeHtml(t)}"${t === q.theme ? ' selected' : ''}>${t ? escapeHtml(t) : '(без теми)'}</option>`
+        ).join('');
+
+        return `
+          <tr>
+            <td>
+              <input data-q="${i}" data-field="question" value="${escapeHtml(q.question)}" style="width:100%;" />
+            </td>
+            <td>
+              <select data-q="${i}" data-field="theme"${themeWarn} style="width:100%;">
+                ${options}
+              </select>
+            </td>
+            <td>
+              <button data-del="${i}">🗑️</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    jsonView.textContent = JSON.stringify(report, null, 2);
+  }
+
+  async function load(){
+    setStatus('Завантаження…');
+    const courseId = localStorage.getItem('courseId') || '';
+    const course = localStorage.getItem('course') || '';
+    const duration = localStorage.getItem('duration') || '';
+
+    if (!courseId) {
+      report = null;
+      render();
+      setStatus('Немає courseId у localStorage. Поверніться на p1.html.', 'err');
+      saveBtn.disabled = true;
+      addQ.disabled = true;
+      return;
+    }
+
+    report = await apiGetReport(courseId);
+    normalizeQuestions();
+    render();
+    setStatus(`Курс: ${courseId} — ${course} (${duration} год.)`, 'ok');
+    saveBtn.disabled = false;
+    addQ.disabled = false;
+  }
+
+  async function save(){
+    if (!report) return;
+    const courseId = localStorage.getItem('courseId') || '';
+    if (!courseId) throw new Error('Немає courseId у localStorage');
+
+    setStatus('Збереження…');
+
+    // чистка пустых вопросов
+    normalizeQuestions();
+    report.questions = report.questions
+      .map(q => ({ question: String(q.question || '').trim(), theme: String(q.theme || '').trim() }))
+      .filter(q => q.question.length > 0);
+
+    report = await apiSaveReport(courseId, report);
+    normalizeQuestions();
+    render();
+    setStatus('Збережено', 'ok');
+    alert('Збережено');
+  }
+
+  // nav
+  toMap.addEventListener('click', () => location.href = 'ui-map.html');
+  reloadBtn.addEventListener('click', () => load().catch(e => setStatus('Помилка: ' + e.message, 'err')));
+  saveBtn.addEventListener('click', () => save().catch(e => setStatus('Помилка: ' + e.message, 'err')));
+
+  // add
+  addQ.addEventListener('click', () => {
+    const v = qInput.value.trim();
+    if (!v || !report) return;
+    const theme = String(themeSelect.value || '');
+    report.questions.push({ question: v, theme });
+    qInput.value = '';
+    render();
+    qInput.focus();
+  });
+
+  qInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addQ.click();
+  });
+
+  // inline edit + delete
+  qBody.addEventListener('input', (e) => {
+    const el = e.target;
+    const idx = el?.getAttribute?.('data-q');
+    const field = el?.getAttribute?.('data-field');
+    if (!report || idx === null || !field) return;
+
+    const i = Number(idx);
+    if (!report.questions[i]) return;
+
+    if (field === 'question') report.questions[i].question = el.value;
+    if (field === 'theme') report.questions[i].theme = el.value;
+
+    jsonView.textContent = JSON.stringify(report, null, 2);
+  });
+
+  qBody.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-del]');
+    if (!btn || !report) return;
+    const idx = Number(btn.getAttribute('data-del'));
+    report.questions.splice(idx, 1);
+    render();
+  });
+
+  // init
+  try { await load(); }
+  catch(e){ setStatus('Помилка API: ' + e.message, 'err'); }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>P1 — Вибір дисципліни</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:24px;max-width:900px}
+    h1{margin:0 0 14px}
+    .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    select,button{padding:10px 12px;font-size:16px}
+    button{cursor:pointer}
+    .muted{opacity:.75}
+    .box{border:1px solid #ddd;border-radius:10px;padding:14px;margin-top:14px}
+    pre{background:#f6f6f6;padding:10px;border-radius:8px;overflow:auto}
+  </style>
+</head>
+<body>
+  <h1>P1 — Вибір дисципліни</h1>
+
+  <div class="row">
+    <label for="courseSelect" class="muted">Дисципліна:</label>
+    <select id="courseSelect">
+      <option value="">(завантаження...)</option>
+    </select>
+    <button id="btnNext" disabled>Далі →</button>
+  </div>
+
+  <div class="box">
+    <div class="muted">Поточний вибір:</div>
+    <div id="chosenInfo">—</div>
+  </div>
+
+  <div class="box">
+    <div class="muted">Лог:</div>
+    <pre id="log"></pre>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    const log = (msg) => { $('log').textContent += msg + "\n";  };
+
+    async function loadCourses() {
+      $('courseSelect').innerHTML = '<option value="">(оберіть дисципліну)</option>';
+
+      const r = await fetch('api.php?action=getCourses');
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'getCourses failed');
+
+      const courses = Array.isArray(j.data) ? j.data : [];
+      for (const c of courses) {
+        const opt = document.createElement('option');
+        opt.value = c.courseId || '';
+        opt.textContent = `${c.courseId || ''} — ${c.course || ''} (${c.duration || ''} год.)`;
+        opt.dataset.course = c.course || '';
+        opt.dataset.duration = c.duration || '';
+        $('courseSelect').appendChild(opt);
+      }
+    }
+
+    function updateChosen() {
+      const sel = $('courseSelect');
+      const opt = sel.options[sel.selectedIndex];
+      const id = sel.value;
+
+      if (!id) {
+        $('chosenInfo').textContent = '—';
+        $('btnNext').disabled = true;
+        return;
+      }
+
+      $('chosenInfo').textContent = `${id} — ${opt.dataset.course} (${opt.dataset.duration} год.)`;
+      $('btnNext').disabled = false;
+
+      localStorage.setItem('courseId', id);
+      localStorage.setItem('course', opt.dataset.course || '');
+      localStorage.setItem('duration', opt.dataset.duration || '');
+    }
+
+    async function createDraftAndGo() {
+      const courseId = localStorage.getItem('courseId') || '';
+      if (!courseId) return;
+
+      log(`createDraft: ${courseId}`);
+
+      const r = await fetch('api.php?action=createDraft', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ courseId })
+      });
+
+      const j = await r.json();
+      if (!j.ok) throw new Error(j.error || 'createDraft failed');
+
+      log('draft created/overwritten for this courseId');
+      location.href = 'ui-map.html';
+    }
+
+    (async () => {
+      try {
+        await loadCourses();
+        const saved = localStorage.getItem('courseId') || '';
+        if (saved) $('courseSelect').value = saved;
+        updateChosen();
+
+        $('courseSelect').addEventListener('change', updateChosen);
+        $('btnNext').addEventListener('click', createDraftAndGo);
+        log('ready');
+      } catch (e) {
+        log('ERROR: ' + e.message);
+        alert(e.message);
+      }
+    })();
+  </script>
+</body>
+</html>

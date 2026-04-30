@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ui-map</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:24px;max-width:900px}
+    h1{margin:0 0 10px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:14px}
+    a.btn{display:block;text-decoration:none;border:1px solid #ddd;border-radius:12px;padding:14px}
+    a.btn:hover{border-color:#aaa}
+    .muted{opacity:.75}
+    pre{background:#f6f6f6;padding:10px;border-radius:10px;overflow:auto}
+  </style>
+</head>
+<body>
+  <h1>ui-map</h1>
+  <div class="muted" id="subtitle">—</div>
+
+  <div class="grid">
+    <a class="btn" href="p2.html">P2 — теми</a>
+    <a class="btn" href="p3.html">P3 — питання</a>
+    <a class="btn" href="p4.html">P4 — студенти</a>
+    <a class="btn" href="p5.html">P5 — література</a>
+  </div>
+
+  <h2>Поточний report</h2>
+  <pre id="out">(loading...)</pre>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  async function loadReport() {
+    const courseId = localStorage.getItem('courseId') || '';
+    const course = localStorage.getItem('course') || '';
+    const duration = localStorage.getItem('duration') || '';
+
+    $('subtitle').textContent = courseId
+      ? `${courseId} — ${course} (${duration} год.)`
+      : 'courseId не вибрано — поверніться на p1.html';
+
+    if (!courseId) {
+      $('out').textContent = 'Немає courseId у localStorage.';
+      return;
+    }
+
+    const r = await fetch(`api.php?action=getReport&courseId=${encodeURIComponent(courseId)}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'getReport failed');
+    $('out').textContent = JSON.stringify(j.data, null, 2);
+  }
+
+  loadReport().catch(e => {
+    $('out').textContent = 'ERROR: ' + e.message;
+  });
+</script>
+</body>
+</html>

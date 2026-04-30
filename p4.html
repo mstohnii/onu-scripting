@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>p4 — студенти</title>
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; line-height: 1.4; }
+    .wrap { max-width: 1100px; }
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
+    .card { border:1px solid #ddd; border-radius:12px; padding:16px; margin:12px 0; }
+    input, button { padding:10px 12px; font-size:14px; }
+    button { cursor:pointer; }
+    .muted { color:#666; }
+    .ok { color:#0a7; }
+    .err { color:#b00; }
+    ul { padding-left: 20px; }
+    li { margin: 6px 0; }
+    pre { background:#f7f7f7; padding:12px; border-radius:10px; overflow:auto; }
+    .hint { font-size: 12px; color:#666; margin-top:6px; }
+    .pill { display:inline-block; padding:2px 8px; border:1px solid #ddd; border-radius:999px; font-size:12px; color:#555; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <h1>p4 — заповнення студентів</h1>
+
+  <div class="row">
+    <button id="toMap">← ui-map</button>
+    <button id="reload">Перезавантажити</button>
+    <button id="save">Зберегти</button>
+    <span class="pill" id="courseBadge">—</span>
+  </div>
+
+  <p id="status" class="muted"></p>
+
+  <div class="card">
+    <h3>students</h3>
+    <p class="hint">
+      Кожен студент — окремий рядок у масиві <code>students[]</code> (наприклад: «Іваненко Іван»).
+    </p>
+
+    <div class="row">
+      <input id="sInput" placeholder="Новий студент…" style="flex:1; min-width: 360px;" />
+      <button id="addS">Додати</button>
+    </div>
+
+    <ul id="sList"></ul>
+  </div>
+
+  <div class="card">
+    <h3>Контрольний перегляд JSON</h3>
+    <pre id="jsonView">{}</pre>
+  </div>
+</div>
+
+<script>
+(async function(){
+  const statusEl = document.getElementById('status');
+  const jsonView = document.getElementById('jsonView');
+  const courseBadge = document.getElementById('courseBadge');
+
+  const toMap = document.getElementById('toMap');
+  const reloadBtn = document.getElementById('reload');
+  const saveBtn = document.getElementById('save');
+
+  const sInput = document.getElementById('sInput');
+  const addS = document.getElementById('addS');
+  const sList = document.getElementById('sList');
+
+  function setStatus(msg, cls='muted'){
+    statusEl.className = cls;
+    statusEl.textContent = msg;
+  }
+
+  function escapeHtml(s){
+    return String(s).replace(/[&<>"']/g, c => ({
+      "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+    }[c]));
+  }
+
+  async function apiGetReport(courseId){
+    const url = `api.php?action=getReport&courseId=${encodeURIComponent(courseId)}`;
+    const res = await fetch(url, { cache:'no-store' });
+    const json = await res.json().catch(()=>null);
+    if (!res.ok || !json || json.ok !== true) {
+      throw new Error((json && json.error) ? json.error : ('HTTP ' + res.status));
+    }
+    return json.data;
+  }
+
+  async function apiSaveReport(courseId, report){
+    const url = 'api.php?action=saveReport';
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json' },
+      cache:'no-store',
+      body: JSON.stringify({ courseId, report })
+    });
+    const json = await res.json().catch(()=>null);
+    if (!res.ok || !json || json.ok !== true) {
+      throw new Error((json && json.error) ? json.error : ('HTTP ' + res.status));
+    }
+    return json.data;
+  }
+
+  let report = null;
+
+  function normalizeStudents(){
+    if (!report) return;
+    const arr = Array.isArray(report.students) ? report.students : [];
+    report.students = arr
+      .map(x => String(x || '').trim())
+      .filter(x => x.length > 0);
+  }
+
+  function render(){
+    if (!report) {
+      sList.innerHTML = '<li class="muted">Немає чернетки</li>';
+      jsonView.textContent = '{}';
+      return;
+    }
+
+    normalizeStudents();
+
+    sList.innerHTML = report.students.length
+      ? report.students.map((s, i) =>
+          `<li>${escapeHtml(s)} <button data-del="${i}">видалити</button></li>`
+        ).join('')
+      : '<li class="muted">Поки порожньо</li>';
+
+    jsonView.textContent = JSON.stringify(report, null, 2);
+  }
+
+  async function load(){
+    setStatus('Завантаження…');
+
+    const courseId = localStorage.getItem('courseId') || '';
+    const course = localStorage.getItem('course') || '';
+    const duration = localStorage.getItem('duration') || '';
+
+    courseBadge.textContent = courseId ? `${courseId}` : '—';
+
+    if (!courseId) {
+      report = null;
+      render();
+      setStatus('Немає courseId у localStorage. Поверніться на p1.html.', 'err');
+      saveBtn.disabled = true;
+      addS.disabled = true;
+      return;
+    }
+
+    report = await apiGetReport(courseId);
+    normalizeStudents();
+    render();
+
+    setStatus(`Курс: ${courseId} — ${course} (${duration} год.)`, 'ok');
+    saveBtn.disabled = false;
+    addS.disabled = false;
+  }
+
+  async function save(){
+    if (!report) return;
+
+    const courseId = localStorage.getItem('courseId') || '';
+    if (!courseId) throw new Error('Немає courseId у localStorage');
+
+    setStatus('Збереження…');
+
+    normalizeStudents();
+    report.students = report.students
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    report = await apiSaveReport(courseId, report);
+    normalizeStudents();
+    render();
+
+    setStatus('Збережено', 'ok');
+    alert('Збережено');
+  }
+
+  // nav
+  toMap.addEventListener('click', () => location.href = 'ui-map.html');
+  reloadBtn.addEventListener('click', () => load().catch(e => setStatus('Помилка: ' + e.message, 'err')));
+  saveBtn.addEventListener('click', () => save().catch(e => setStatus('Помилка: ' + e.message, 'err')));
+
+  // add
+  addS.addEventListener('click', () => {
+    const v = sInput.value.trim();
+    if (!v || !report) return;
+    report.students.push(v);
+    sInput.value = '';
+    render();
+    sInput.focus();
+  });
+
+  sInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') addS.click();
+  });
+
+  // delete
+  sList.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-del]');
+    if (!btn || !report) return;
+    const idx = Number(btn.getAttribute('data-del'));
+    report.students.splice(idx, 1);
+    render();
+  });
+
+  // init
+  try { await load(); }
+  catch(e){ setStatus('Помилка API: ' + e.message, 'err'); }
+})();
+</script>
+</body>
+</html>

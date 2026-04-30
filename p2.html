@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>p2 — теми</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:24px;max-width:1100px}
+    h1{margin:0 0 10px}
+    .muted{opacity:.75}
+    .topbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+    button{padding:10px 12px;font-size:15px;cursor:pointer}
+    input{padding:10px 10px;font-size:15px;width:100%;box-sizing:border-box}
+    table{width:100%;border-collapse:collapse;margin-top:12px}
+    th,td{border:1px solid #ddd;padding:8px;vertical-align:top}
+    th{background:#f7f7f7;text-align:left}
+    .col-title{width:38%}
+    .col-dur{width:14%}
+    .col-refs{width:38%}
+    .col-act{width:10%}
+    .small{font-size:13px}
+    pre{background:#f6f6f6;padding:10px;border-radius:10px;overflow:auto;margin-top:14px}
+    .hint{margin-top:6px}
+  </style>
+</head>
+<body>
+  <h1>p2 — теми</h1>
+  <div class="muted" id="subtitle">—</div>
+
+  <div class="topbar">
+    <button id="btnBack">← ui-map</button>
+    <button id="btnAdd">+ Додати тему</button>
+    <button id="btnSave">💾 Зберегти</button>
+  </div>
+
+  <div class="hint muted small">
+    Поле <b>references</b>: вводьте через кому (наприклад: <i>[1], [2], ГОСТ...</i>) — у JSON збережеться як масив рядків.
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th class="col-title">title</th>
+        <th class="col-dur">duration</th>
+        <th class="col-refs">references</th>
+        <th class="col-act">дії</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+
+  <h2>Debug</h2>
+  <pre id="debug">(loading...)</pre>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  let report = null;
+
+  function refsToText(arr) {
+    if (!Array.isArray(arr)) return '';
+    return arr.join(', ');
+  }
+
+  function textToRefs(s) {
+    return String(s || '')
+      .split(',')
+      .map(x => x.trim())
+      .filter(x => x.length > 0);
+  }
+
+  function render() {
+    const tb = $('tbody');
+    tb.innerHTML = '';
+
+    const themes = Array.isArray(report?.themes) ? report.themes : [];
+    themes.forEach((t, idx) => {
+      const tr = document.createElement('tr');
+
+      const tdTitle = document.createElement('td');
+      const inpTitle = document.createElement('input');
+      inpTitle.value = t.title || '';
+      inpTitle.placeholder = 'Назва теми';
+      inpTitle.addEventListener('input', () => {
+        report.themes[idx].title = inpTitle.value;
+        updateDebug();
+      });
+      tdTitle.appendChild(inpTitle);
+
+      const tdDur = document.createElement('td');
+      const inpDur = document.createElement('input');
+      inpDur.value = t.duration || '';
+      inpDur.placeholder = 'години';
+      inpDur.addEventListener('input', () => {
+        report.themes[idx].duration = inpDur.value;
+        updateDebug();
+      });
+      tdDur.appendChild(inpDur);
+
+      const tdRefs = document.createElement('td');
+      const inpRefs = document.createElement('input');
+      inpRefs.value = refsToText(t.references);
+      inpRefs.placeholder = 'refs через кому';
+      inpRefs.addEventListener('input', () => {
+        report.themes[idx].references = textToRefs(inpRefs.value);
+        updateDebug();
+      });
+      tdRefs.appendChild(inpRefs);
+
+      const tdAct = document.createElement('td');
+      const btnDel = document.createElement('button');
+      btnDel.textContent = '🗑️';
+      btnDel.title = 'Видалити тему';
+      btnDel.addEventListener('click', () => {
+        report.themes.splice(idx, 1);
+        render();
+      });
+      tdAct.appendChild(btnDel);
+
+      tr.appendChild(tdTitle);
+      tr.appendChild(tdDur);
+      tr.appendChild(tdRefs);
+      tr.appendChild(tdAct);
+
+      tb.appendChild(tr);
+    });
+
+    updateDebug();
+  }
+
+  function updateDebug() {
+    $('debug').textContent = JSON.stringify(report, null, 2);
+  }
+
+  async function loadReport() {
+    const courseId = localStorage.getItem('courseId') || '';
+    const course = localStorage.getItem('course') || '';
+    const duration = localStorage.getItem('duration') || '';
+
+    $('subtitle').textContent = courseId
+      ? `${courseId} — ${course} (${duration} год.)`
+      : 'courseId не вибрано — поверніться на p1.html';
+
+    if (!courseId) throw new Error('No courseId in localStorage');
+
+    const r = await fetch(`api.php?action=getReport&courseId=${encodeURIComponent(courseId)}`);
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'getReport failed');
+
+    report = j.data;
+    if (!Array.isArray(report.themes)) report.themes = [];
+    render();
+  }
+
+  async function saveReport() {
+    const courseId = localStorage.getItem('courseId') || '';
+    if (!courseId) throw new Error('No courseId in localStorage');
+
+    // лёгкая чистка пустых title
+    report.themes = (report.themes || [])
+      .map(t => ({
+        title: String(t.title || '').trim(),
+        duration: String(t.duration || '').trim(),
+        references: Array.isArray(t.references) ? t.references.map(x => String(x).trim()).filter(Boolean) : []
+      }))
+      .filter(t => t.title.length > 0);
+
+    const r = await fetch('api.php?action=saveReport', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ courseId, report })
+    });
+
+    const j = await r.json();
+    if (!j.ok) throw new Error(j.error || 'saveReport failed');
+
+    report = j.data;
+    render();
+    alert('Збережено');
+  }
+
+  $('btnBack').addEventListener('click', () => location.href = 'ui-map.html');
+
+  $('btnAdd').addEventListener('click', () => {
+    if (!report) return;
+    report.themes.push({ title: '', duration: '', references: [] });
+    render();
+
+    // фокус на последний title
+    const inputs = document.querySelectorAll('#tbody input');
+    if (inputs.length) inputs[inputs.length - 3].focus();
+  });
+
+  $('btnSave').addEventListener('click', () => {
+    saveReport().catch(e => alert(e.message));
+  });
+
+  loadReport().catch(e => {
+    $('debug').textContent = 'ERROR: ' + e.message;
+  });
+</script>
+</body>
+</html>
