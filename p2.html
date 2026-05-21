@@ -5,22 +5,29 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>p2 — теми</title>
   <style>
-    body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:24px;max-width:1100px}
-    h1{margin:0 0 10px}
-    .muted{opacity:.75}
-    .topbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
-    button{padding:10px 12px;font-size:15px;cursor:pointer}
-    input{padding:10px 10px;font-size:15px;width:100%;box-sizing:border-box}
-    table{width:100%;border-collapse:collapse;margin-top:12px}
-    th,td{border:1px solid #ddd;padding:8px;vertical-align:top}
-    th{background:#f7f7f7;text-align:left}
+    body{font-family:system-ui,Segoe UI,Arial,sans-serif;margin:0;padding:32px 24px;max-width:1100px;margin-left:auto;margin-right:auto;background:#f7f8fa;color:#1f2937;line-height:1.5}
+    h1{margin:0 0 10px;font-size:28px;font-weight:600;color:#111827;letter-spacing:-0.01em}
+    h2{font-size:18px;font-weight:600;color:#111827;margin:24px 0 8px}
+    .muted{opacity:.7;color:#4b5563}
+    .topbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:14px 0}
+    button{padding:10px 14px;font-size:15px;cursor:pointer;border-radius:8px;border:1px solid #2563eb;background:#2563eb;color:#fff;font-weight:500;transition:all .15s ease}
+    button:hover{background:#1d4ed8;border-color:#1d4ed8}
+    button:focus{outline:none;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+    input{padding:8px 10px;font-size:15px;width:100%;box-sizing:border-box;border:1px solid #d1d5db;border-radius:6px;background:#fff;transition:border-color .15s ease,box-shadow .15s ease}
+    input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.15)}
+    table{width:100%;border-collapse:separate;border-spacing:0;margin-top:14px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+    th,td{border-bottom:1px solid #e5e7eb;padding:10px;vertical-align:top}
+    tr:last-child td{border-bottom:none}
+    th{background:#f9fafb;text-align:left;font-weight:600;color:#374151;font-size:13px;text-transform:uppercase;letter-spacing:.04em}
+    td button{padding:6px 10px;font-size:14px;background:#fff;color:#dc2626;border:1px solid #fecaca}
+    td button:hover{background:#fef2f2;border-color:#fca5a5}
     .col-title{width:38%}
     .col-dur{width:14%}
     .col-refs{width:38%}
     .col-act{width:10%}
     .small{font-size:13px}
-    pre{background:#f6f6f6;padding:10px;border-radius:10px;overflow:auto;margin-top:14px}
-    .hint{margin-top:6px}
+    pre{background:#f3f4f6;padding:12px;border-radius:10px;overflow:auto;margin-top:14px;font-size:13px;color:#374151;border:1px solid #e5e7eb}
+    .hint{margin-top:8px}
   </style>
 </head>
 <body>
