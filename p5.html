@@ -5,20 +5,25 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>p5 — література</title>
   <style>
-    body { font-family: system-ui, Arial, sans-serif; margin: 24px; line-height: 1.4; }
-    .wrap { max-width: 1100px; }
+    body { font-family: system-ui, Arial, sans-serif; margin: 0; padding: 32px 24px; line-height: 1.5; background:#f7f8fa; color:#1f2937; }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    h1 { font-size: 28px; font-weight: 600; color: #111827; margin: 0 0 12px; letter-spacing: -0.01em; }
+    h2 { font-size: 18px; font-weight: 600; color: #111827; margin: 20px 0 8px; }
     .row { display:flex; gap:12px; flex-wrap:wrap; align-items:end; }
-    .card { border:1px solid #ddd; border-radius:12px; padding:16px; margin:12px 0; }
-    input, button { padding:10px 12px; font-size:14px; }
-    button { cursor:pointer; }
-    .muted { color:#666; }
-    .ok { color:#0a7; }
-    .err { color:#b00; }
+    .card { border:1px solid #e5e7eb; border-radius:12px; padding:18px; margin:14px 0; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.04); }
+    input, button { padding:10px 12px; font-size:14px; border-radius:8px; border:1px solid #d1d5db; background:#fff; transition: all .15s ease; }
+    input:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.15); }
+    button { cursor:pointer; background:#2563eb; color:#fff; border-color:#2563eb; font-weight:500; }
+    button:hover { background:#1d4ed8; border-color:#1d4ed8; }
+    button:focus { outline:none; box-shadow:0 0 0 3px rgba(37,99,235,.15); }
+    .muted { color:#6b7280; }
+    .ok { color:#059669; font-weight:500; }
+    .err { color:#dc2626; font-weight:500; }
     ul { padding-left: 20px; }
     li { margin: 6px 0; }
-    pre { background:#f7f7f7; padding:12px; border-radius:10px; overflow:auto; }
-    .hint { font-size: 12px; color:#666; margin-top:6px; }
-    .pill { display:inline-block; padding:2px 8px; border:1px solid #ddd; border-radius:999px; font-size:12px; color:#555; }
+    pre { background:#f3f4f6; padding:12px; border-radius:10px; overflow:auto; font-size:13px; color:#374151; border:1px solid #e5e7eb; }
+    .hint { font-size: 12px; color:#6b7280; margin-top:6px; }
+    .pill { display:inline-block; padding:3px 10px; border:1px solid #e5e7eb; border-radius:999px; font-size:12px; color:#4b5563; background:#f9fafb; font-weight:500; }
   </style>
 </head>
 <body>

@@ -13,5 +13,15 @@
     "courseId": "3",
     "course": "Software Engineering",
     "duration": "120"
+  },
+  {
+    "courseId": "4",
+    "course": "Data Structures and Algorithms",
+    "duration": "120"
+  },
+  {
+    "courseId": "5",
+    "course": "Database Systems",
+    "duration": "90"
   }
 ]

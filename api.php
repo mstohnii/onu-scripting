@@ -148,6 +148,24 @@ function normalize_report(array $r): array {
   if (!is_array($refs)) $refs = [];
   $r['references'] = array_values(array_filter(array_map('strval', $refs), fn($x)=>trim($x) !== ''));
 
+  // grades: [{student, score, note}]
+  $grades = $r['grades'] ?? [];
+  if (!is_array($grades)) $grades = [];
+  $normGrades = [];
+  foreach ($grades as $g) {
+    if (!is_array($g)) continue;
+    $student = trim((string)($g['student'] ?? ''));
+    if ($student === '') continue;
+    $score = trim((string)($g['score'] ?? ''));
+    $note  = (string)($g['note'] ?? '');
+    $normGrades[] = [
+      'student' => $student,
+      'score'   => $score,
+      'note'    => $note,
+    ];
+  }
+  $r['grades'] = $normGrades;
+
   return $r;
 }
 
@@ -184,7 +202,8 @@ switch ($action) {
     }
     if (!$course) fail("Course not found: $courseId", 404);
 
-    $tpl = read_json_file(TEMPLATE_FILE);
+    $path = report_path_for($courseId);
+    $tpl = read_json_file($path) ?? read_json_file(TEMPLATE_FILE);
     if (!is_array($tpl)) fail("Missing/invalid template file", 500);
 
     $tpl['courseId'] = (string)($course['courseId'] ?? '');
@@ -193,7 +212,6 @@ switch ($action) {
 
     $tpl = normalize_report($tpl);
 
-    $path = report_path_for($courseId);
     write_json_file($path, $tpl);
 
     respond(["ok" => true, "data" => $tpl]);

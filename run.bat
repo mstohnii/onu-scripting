@@ -8,7 +8,7 @@ REM --- Python (якщо python не в PATH — впиши повний шля�
 set PYTHON=python
 
 REM --- Скрипт генерації
-set SCRIPT=%ROOT%generate_report.py
+set SCRIPT=%ROOT%generate_report_normalizing.py
 
 REM --- Шаблон Word
 set TEMPLATE=%ROOT%template.docx
